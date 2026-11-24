@@ -14,6 +14,11 @@ name = "pobctl"
 path = "src/bin/pobctl.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "pobweb"
+path = "src/bin/pobweb.rs"
+required-features = ["cli"]
+
 [features]
 default = ["cli"]
 cli = ["dep:clap", "dep:env_logger", "dep:mimalloc"]

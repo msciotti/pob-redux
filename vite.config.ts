@@ -5,14 +5,30 @@ import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
 const host = process.env.TAURI_DEV_HOST;
 
-export default defineConfig({
+// `vite --mode web` (bun run dev:web) runs the UI in a plain browser: Tauri's
+// modules are swapped for src/dev-web/, and commands go to the pobweb dev server.
+const dev = (file: string) => fileURLToPath(new URL(`./src/dev-web/${file}`, import.meta.url));
+const WEB_ALIASES = [
+  { find: /^@tauri-apps\/api\/core$/, replacement: dev("core.ts") },
+  { find: /^@tauri-apps\/api\/event$/, replacement: dev("event.ts") },
+  { find: /^@tauri-apps\/api\/window$/, replacement: dev("window.ts") },
+  { find: /^@tauri-apps\/api\/webview$/, replacement: dev("webview.ts") },
+  { find: /^@tauri-apps\/api\/app$/, replacement: dev("app.ts") },
+  { find: /^@tauri-apps\/plugin-[a-z-]+$/, replacement: dev("plugins.ts") },
+];
+const POBWEB = "http://127.0.0.1:1430";
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     // Options live in project.inlang/paraglide.config.js.
     paraglideVitePlugin({ project: "./project.inlang" }),
     svelte(),
   ],
   resolve: {
-    alias: { $lib: fileURLToPath(new URL("./src/lib", import.meta.url)) },
+    alias: [
+      { find: "$lib", replacement: fileURLToPath(new URL("./src/lib", import.meta.url)) },
+      ...(mode === "web" ? WEB_ALIASES : []),
+    ],
   },
   clearScreen: false,
   server: {
@@ -21,6 +37,7 @@ export default defineConfig({
     host: host || false,
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
     watch: { ignored: ["**/src-tauri/**", "**/crates/**", "**/target/**"] },
+    proxy: mode === "web" ? { "/invoke": POBWEB, "/pobasset": POBWEB } : undefined,
   },
   build: {
     // WebView2 on Windows, WebKitGTK on Linux: both are evergreen. The floor is
@@ -30,4 +47,4 @@ export default defineConfig({
     sourcemap: false,
   },
   envPrefix: ["VITE_", "TAURI_ENV_*"],
-});
+}));

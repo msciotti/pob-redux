@@ -7,6 +7,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
+    "dev:web": "vite --mode web",
+    "dev:engine": "cargo run --release -p pob-engine --bin pobweb -- --pob-root src-tauri/resources/pob1",
     "build": "vite build",
     "preview": "vite preview",
     "check": "bun run i18n && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
