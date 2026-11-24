@@ -12,9 +12,17 @@
   let {
     full,
     floating = false,
+    pane = false,
     ontoggle,
     onpick,
-  }: { full: boolean; floating?: boolean; ontoggle: () => void; onpick?: () => void } = $props();
+  }: {
+    full: boolean;
+    floating?: boolean;
+    /** The whole panel, as the compact chat's thread page: no collapse button. */
+    pane?: boolean;
+    ontoggle: () => void;
+    onpick?: () => void;
+  } = $props();
 
   let query = $state("");
   let renaming = $state<string | null>(null);
@@ -213,9 +221,9 @@
   </div>
 {/snippet}
 
-<nav class="side" class:full class:floating aria-label={m.threads_title()}>
+<nav class="side" class:full class:floating class:pane aria-label={m.threads_title()}>
   <div class="top">
-    <button
+    {#if !pane}<button
       class="icon"
       class:on={full}
       aria-expanded={full}
@@ -224,7 +232,7 @@
       onclick={ontoggle}
     >
       <Icon name="sidebar-simple" size={16} />
-    </button>
+    </button>{/if}
     {#if full}
       <span class="label">{m.threads_title()}</span>
       <button class="icon fresh" disabled={chat.busy} title={chat.busy ? m.threads_busy() : m.threads_new_title()} aria-label={m.threads_new()} onclick={startNew}>
@@ -288,6 +296,11 @@
   }
   .side.full {
     width: 240px;
+  }
+  .side.pane {
+    flex: 1;
+    width: auto;
+    min-width: 0;
   }
   .side.floating {
     position: absolute;

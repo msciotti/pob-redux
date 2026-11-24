@@ -1,6 +1,7 @@
 <script lang="ts">
   import { scrollHint } from "$lib/scroll-hint";
   import { onMount, tick } from "svelte";
+  import { fly } from "svelte/transition";
   import { chat, DEFAULT_WIDTH, experimentDelta, lookupSite, MAX_WIDTH, MIN_WIDTH, type ToolTurn } from "$lib/state/chat.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import ModelPicker from "$lib/components/ModelPicker.svelte";
@@ -18,7 +19,10 @@
   import { writeText } from "@tauri-apps/plugin-clipboard-manager";
   import { m } from "$lib/paraglide/messages";
 
-  /** `compact`: no thread rail; the threads and new-thread buttons sit in the header (the phone layout). */
+  /**
+   * `compact` (the phone layout): the thread list and the conversation each take the whole panel.
+   * The conversation's back arrow, or a swipe right from its left edge, shows the list; picking a thread returns.
+   */
   let { windowed = false, compact = false }: { windowed?: boolean; compact?: boolean } = $props();
 
   const SIDE_KEY = "pob-redux:thread-sidebar";
@@ -28,8 +32,23 @@
   let titlesShown = $state(readTitlesShown());
   let peek = $state(false);
   const roomy = $derived(panelWidth >= ROOMY);
-  const sideFull = $derived(roomy && !compact ? titlesShown : peek);
-  const floating = $derived((!roomy || compact) && peek);
+  const sideFull = $derived(roomy ? titlesShown : peek);
+  const floating = $derived(!roomy && peek);
+  let listOpen = $state(false);
+
+  /** Compact: a swipe right that starts at the conversation's left edge goes back to the list. */
+  let swipe: { id: number; x: number; y: number } | null = null;
+  function swipeStart(e: PointerEvent) {
+    const left = (e.currentTarget as HTMLElement).getBoundingClientRect().left;
+    swipe = e.clientX - left < 28 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+  }
+  function swipeEnd(e: PointerEvent) {
+    if (!swipe || swipe.id !== e.pointerId) return;
+    const dx = e.clientX - swipe.x;
+    const dy = Math.abs(e.clientY - swipe.y);
+    swipe = null;
+    if (dx > 60 && dy < dx / 2) listOpen = true;
+  }
 
   function readTitlesShown() {
     try {
@@ -40,7 +59,7 @@
   }
 
   function toggleSide() {
-    if (!roomy || compact) {
+    if (!roomy) {
       peek = !peek;
       return;
     }
@@ -331,16 +350,29 @@
     ondblclick={() => chat.setWidth(DEFAULT_WIDTH, true)}
     title={m.chat_resize_title()}
   ></div>{/if}
-  {#if !compact || peek}
-    <div class="sidewrap" class:floating class:compact bind:this={sidewrap}>
+  {#if compact}
+    {#if listOpen}
+      <div class="listpane" transition:fly={{ x: -48, duration: 180 }}>
+        <ThreadSidebar full pane ontoggle={() => (listOpen = false)} onpick={() => (listOpen = false)} />
+      </div>
+    {/if}
+  {:else}
+    <div class="sidewrap" class:floating bind:this={sidewrap}>
       <ThreadSidebar full={sideFull} {floating} ontoggle={toggleSide} onpick={() => (peek = false)} />
     </div>
   {/if}
-  <div class="main">
+  <!-- svelte-ignore a11y_no_static_element_interactions (the edge swipe repeats the back button) -->
+  <div
+    class="main"
+    class:gone={compact && listOpen}
+    onpointerdown={compact ? swipeStart : undefined}
+    onpointerup={compact ? swipeEnd : undefined}
+    onpointercancel={() => (swipe = null)}
+  >
     <div class="head">
       {#if compact}
-        <button class="icon" title={m.threads_expand()} aria-label={m.threads_expand()} aria-expanded={peek} onclick={(e) => { e.stopPropagation(); toggleSide(); }}>
-          <Icon name="sidebar-simple" size={17} />
+        <button class="back" aria-label={m.threads_title()} onclick={() => (listOpen = true)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>{m.threads_title()}
         </button>
       {/if}
       <span class="title">
@@ -638,21 +670,39 @@
   .sidewrap.floating {
     width: 44px;
   }
-  /* Compact: no rail; the open list lies over the conversation. */
-  .sidewrap.compact {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 0;
-    border-right: 0;
-    z-index: 20;
-  }
   /* iOS zooms into a focused field under 16px. */
   .chat.compact :global(textarea),
   .chat.compact :global(input) {
     font-size: 16px;
   }
-  .sidewrap.compact :global(.side.floating) {
-    width: min(320px, 85vw);
+  .listpane {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+  }
+  .main.gone {
+    display: none;
+  }
+  .back {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: none;
+    padding: 4px 6px 4px 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-size: var(--fs-md);
+    font-weight: 600;
+  }
+  .back svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2.2;
   }
   .main {
     display: flex;
