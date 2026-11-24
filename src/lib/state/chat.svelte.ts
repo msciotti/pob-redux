@@ -100,6 +100,8 @@ export interface ThreadMeta {
   pinned: boolean;
   /** The first message, for search. */
   preview: string;
+  /** The start of the last reply, for the phone layout's thread rows. Older threads lack it. */
+  last?: string;
 }
 
 /** What a thread's file holds. */
@@ -125,6 +127,16 @@ const TITLE_PROMPT =
 function newThread(g: Game = game.current): ThreadMeta {
   const now = Date.now();
   return { id: crypto.randomUUID(), game: g, title: "", titled: false, createdAt: now, updatedAt: now, build: null, provider: "", model: "", pinned: false, preview: "" };
+}
+
+/** Markdown reduced to its first 200 characters of plain text. */
+function plainStart(md: string): string {
+  return md
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`#>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
 }
 
 /** The first message cut short, as a title until a model writes a better one. */
@@ -712,10 +724,12 @@ class ChatStore {
       }
     }
     const first = this.turns.find((t) => t.kind === "user")?.text ?? "";
+    const reply = [...this.turns].reverse().find((t) => t.kind === "assistant")?.text ?? "";
     const meta: ThreadMeta = {
       ...this.thread,
       title: this.thread.title || quickTitle(first),
       preview: first.slice(0, 300),
+      last: plainStart(reply),
       ...(touched ? { updatedAt: Date.now(), build: build.info?.name ?? this.thread.build, provider: this.provider, model: this.model } : {}),
     };
     this.thread = meta;

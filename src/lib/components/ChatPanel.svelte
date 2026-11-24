@@ -2,6 +2,7 @@
   import { scrollHint } from "$lib/scroll-hint";
   import { onMount, tick } from "svelte";
   import { fly } from "svelte/transition";
+  import ThreadPage from "$lib/components/ThreadPage.svelte";
   import { chat, DEFAULT_WIDTH, experimentDelta, lookupSite, MAX_WIDTH, MIN_WIDTH, type ToolTurn } from "$lib/state/chat.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import ModelPicker from "$lib/components/ModelPicker.svelte";
@@ -353,7 +354,7 @@
   {#if compact}
     {#if listOpen}
       <div class="listpane" transition:fly={{ x: -48, duration: 180 }}>
-        <ThreadSidebar full pane ontoggle={() => (listOpen = false)} onpick={() => (listOpen = false)} />
+        <ThreadPage onpick={() => (listOpen = false)} />
       </div>
     {/if}
   {:else}

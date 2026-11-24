@@ -37,6 +37,18 @@ if (new URLSearchParams(location.search).has("demo")) {
     agent: null, login: null, install: null, download: null, install_command: null, ready: true,
   }];
   DEFAULTS.ai_models = [{ id: "demo", label: "Demo" }];
+  const hour = 3_600_000;
+  DEFAULTS.threads_list = [
+    ["Cap chaos resistance", "Your chaos resistance is 68%, 7 under the cap. I added +70 maximum life and +18% chaos res to Ring 2.", 0.2],
+    ["Cheapest DPS upgrade", "The best value is a +1 cold skills amulet: about 18% more DPS for a few divines on trade.", 5],
+    ["Bossing setup", "Against pinnacle bosses swap Efficacy for Hypothermia: DPS goes from 975k to 1.07M.", 30],
+    ["Why is my EHP low?", "Physical hits are the weak point: 18.6k max hit, with 36% reduction from armour.", 80],
+  ].map(([title, last, h], i) =>
+    JSON.stringify({
+      id: `demo-${i}`, game: "poe1", title, titled: true, createdAt: Date.now() - Number(h) * hour, updatedAt: Date.now() - Number(h) * hour,
+      build: "OccVortex", provider: "demo", model: "demo", pinned: false, preview: title, last,
+    }),
+  );
 }
 
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
