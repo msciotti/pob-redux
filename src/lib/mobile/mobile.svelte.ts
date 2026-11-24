@@ -16,7 +16,7 @@ export const IS_MOBILE = (() => {
 })();
 
 export type Tab = "ask" | "tree" | "gear" | "skills" | "more";
-export type MorePage = "root" | "calcs" | "config" | "notes" | "party" | "builds" | "settings";
+export type MorePage = "root" | "calcs" | "config" | "notes" | "party" | "builds";
 
 /** The four numbers pinned under the build name. */
 export const HEAD_STATS: [key: string, label: string][] = [

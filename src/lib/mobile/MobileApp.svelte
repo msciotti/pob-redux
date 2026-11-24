@@ -5,8 +5,10 @@
   import { chat } from "$lib/state/chat.svelte";
   import { followOtherWindows } from "$lib/state/tabs.svelte";
   import TreeView from "$lib/views/TreeView.svelte";
+  import SettingsView from "$lib/views/SettingsView.svelte";
+  import ChatPanel from "$lib/components/ChatPanel.svelte";
+  import { appOptions } from "$lib/state/options.svelte";
   import { mobile, HEAD_STATS, short, signedShort, type Tab } from "./mobile.svelte";
-  import AskView from "./AskView.svelte";
   import GearView from "./GearView.svelte";
   import SkillsView from "./SkillsView.svelte";
   import MoreView from "./MoreView.svelte";
@@ -76,7 +78,7 @@
     {/if}
   </header>
 
-  <main class="m-main" class:fill={mobile.tab === "tree"}>
+  <main class="m-main" class:fill={appOptions.open || mobile.tab === "ask" || mobile.tab === "tree"}>
     {#if !status || status.state === "booting" || (status.state === "ready" && !app.ready)}
       <div class="center dim">Starting PoB…</div>
     {:else if status.state !== "ready"}
@@ -86,10 +88,15 @@
           <pre>{status.message}</pre>
         </div>
       </div>
+    {:else if appOptions.open}
+      <div class="fill-host">
+        <div class="donebar"><b>Settings</b><button onclick={() => (appOptions.open = false)}>Done</button></div>
+        <div class="scroll"><SettingsView /></div>
+      </div>
     {:else if mobile.tab === "ask"}
-      <AskView />
+      <div class="fill-host"><ChatPanel windowed /></div>
     {:else if mobile.tab === "tree"}
-      <div class="tree"><TreeView /></div>
+      <div class="fill-host"><TreeView /></div>
     {:else if mobile.tab === "gear"}
       <GearView />
     {:else if mobile.tab === "skills"}
@@ -101,7 +108,7 @@
 
   <nav class="m-tabs" aria-label="Sections">
     {#each TABS as t (t.id)}
-      <button aria-current={mobile.tab === t.id ? "page" : undefined} onclick={() => mobile.go(t.id)}>
+      <button aria-current={mobile.tab === t.id && !appOptions.open ? "page" : undefined} onclick={() => { appOptions.open = false; mobile.go(t.id); }}>
         <svg viewBox="0 0 24 24"><path d={t.icon} /></svg>
         {t.label}
         {#if t.id === "ask" && chat.experiment && mobile.tab !== "ask"}<span class="dot"></span>{/if}
@@ -254,11 +261,36 @@
   .m-main.fill {
     overflow: hidden;
   }
-  .tree {
+  /* Desktop views and panels hosted whole: they fill the space between header and tabs. */
+  .fill-host {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .fill-host .scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .donebar {
+    display: flex;
+    align-items: center;
+    padding: 8px var(--m-gutter-r) 8px var(--m-gutter-l);
+    border-bottom: 1px solid var(--line-0);
+  }
+  .donebar b {
+    flex: 1;
+  }
+  .donebar button {
+    background: none;
+    border: 0;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    padding: 6px 0;
   }
   .center {
     height: 100%;

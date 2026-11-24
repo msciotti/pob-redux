@@ -2,8 +2,7 @@
   import { tick } from "svelte";
   import { engine, type ConfigOption } from "$lib/engine.svelte";
   import { build } from "$lib/state/build.svelte";
-  import { chat } from "$lib/state/chat.svelte";
-  import { game, GAME_LABEL } from "$lib/state/game.svelte";
+  import { appOptions } from "$lib/state/options.svelte";
   import { groupSidebar } from "$lib/sidebar-groups";
   import { stripPobText } from "$lib/pobtext";
   import PobText from "$lib/components/PobText.svelte";
@@ -16,7 +15,6 @@
     notes: "Notes",
     party: "Party",
     builds: "Builds",
-    settings: "Settings",
   };
   const page = $derived(mobile.more[mobile.more.length - 1]);
   const parent = $derived(mobile.more.length > 1 ? mobile.more[mobile.more.length - 2] : null);
@@ -128,8 +126,11 @@
       <button class="m-row" onclick={() => (mobile.sheet = { kind: "builds" })}>
         <span class="body"><div class="title">Builds and import</div><div class="sub">{build.info?.name ?? "No build"} is open</div></span><span class="m-chev">›</span>
       </button>
-      <button class="m-row" onclick={() => go("settings")}>
-        <span class="body"><div class="title">Settings</div><div class="sub">Assistant, game, layout</div></span><span class="m-chev">›</span>
+      <button class="m-row" onclick={() => (appOptions.open = true)}>
+        <span class="body"><div class="title">Settings</div><div class="sub">Assistant, appearance, game</div></span><span class="m-chev">›</span>
+      </button>
+      <button class="m-row" onclick={() => (location.search = "?desktop")}>
+        <span class="body"><div class="title">Use the desktop layout</div><div class="sub">Every tab and panel, sized for a large screen</div></span><span class="m-chev">›</span>
       </button>
     </div>
   {:else if page === "calcs"}
@@ -200,23 +201,6 @@
     <div class="dim small">Saved with the build when you leave the box.</div>
   {:else if page === "party"}
     <div class="empty">Party members are set up on the desktop app for now. Their auras, curses and buffs still count in every number here.</div>
-  {:else if page === "settings"}
-    <h2 class="m-h2">Assistant</h2>
-    <div class="m-group">
-      <div class="m-row">
-        <span class="body"><div class="title">{chat.ready ? (chat.current?.label ?? chat.provider) : "Not set up"}</div><div class="sub">{chat.ready ? chat.model : "Add an API key to ask about builds"}</div></span>
-      </div>
-    </div>
-    <h2 class="m-h2">Game</h2>
-    <div class="m-group">
-      <div class="m-row"><span class="body"><div class="title">{GAME_LABEL[game.current]}</div><div class="sub">The game this PoB plans for</div></span></div>
-    </div>
-    <h2 class="m-h2">Layout</h2>
-    <div class="m-group">
-      <button class="m-row" onclick={() => (location.search = "?desktop")}>
-        <span class="body"><div class="title">Use the desktop layout</div><div class="sub">Every tab and panel, sized for a large screen</div></span><span class="m-chev">›</span>
-      </button>
-    </div>
   {/if}
 </div>
 
