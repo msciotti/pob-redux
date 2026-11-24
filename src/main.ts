@@ -9,7 +9,9 @@ import App from "./App.svelte";
 import AssistantWindow from "./AssistantWindow.svelte";
 import ItemWindow from "./ItemWindow.svelte";
 import TabWindow from "./TabWindow.svelte";
-import { IS_ASSISTANT_WINDOW, IS_ITEM_WINDOW, TAB_VIEW } from "$lib/window";
+import { IS_ASSISTANT_WINDOW, IS_ITEM_WINDOW, IS_MAIN_WINDOW, TAB_VIEW } from "$lib/window";
+import { IS_MOBILE } from "$lib/mobile/mobile.svelte";
+import MobileApp from "$lib/mobile/MobileApp.svelte";
 
 const logError = (message: string) => void invoke("log_frontend", { level: "error", message }).catch(() => {});
 let observerLoops = 0;
@@ -27,6 +29,9 @@ window.addEventListener("unhandledrejection", (e) => {
   logError(`unhandled rejection: ${r instanceof Error ? (r.stack ?? r.message) : String(r)}`);
 });
 
-const app = mount(IS_ASSISTANT_WINDOW ? AssistantWindow : IS_ITEM_WINDOW ? ItemWindow : TAB_VIEW ? TabWindow : App, { target: document.getElementById("app")! });
+const Root = IS_ASSISTANT_WINDOW ? AssistantWindow : IS_ITEM_WINDOW ? ItemWindow : TAB_VIEW ? TabWindow : IS_MAIN_WINDOW && IS_MOBILE ? MobileApp : App;
+const app = mount(Root, { target: document.getElementById("app")! });
+
+if (import.meta.env.MODE === "web" && new URLSearchParams(location.search).has("demo")) void import("./dev-web/demo");
 
 export default app;

@@ -26,7 +26,14 @@ const DEFAULTS: Record<string, unknown> = {
   game_data_status: { game: "poe1", state: "none", done: 0, total: 0, error: null },
 };
 
+/** Assistant tools that are bridge methods of the same name, so Keep and Undo work in the browser. */
+const BRIDGE_TOOLS = new Set(["checkpoint", "rollback", "list_checkpoints", "get_stats"]);
+
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (cmd === "ai_call_tool" && BRIDGE_TOOLS.has(String(args?.name))) {
+    const r = await invoke<{ result: T }>("engine_call", { method: args!.name, params: args!.args ?? null });
+    return r.result;
+  }
   if (SERVED.has(cmd)) {
     const res = await fetch(`/invoke/${cmd}`, { method: "POST", body: JSON.stringify(args ?? {}) });
     const body = await res.json();
