@@ -21,7 +21,8 @@
   import Icon from "$lib/components/Icon.svelte";
   import { m } from "$lib/paraglide/messages";
 
-  let { stacked = false }: { stacked?: boolean } = $props();
+  /** `omit`: sections left out, such as the desktop-only ones in the phone layout. */
+  let { stacked = false, omit = [] }: { stacked?: boolean; omit?: string[] } = $props();
 
   type Tone = "ok" | "warn" | "off" | undefined;
 
@@ -146,7 +147,7 @@
   const decideTone = $derived<Tone>(decider.enabled ? (decider.ready ? "ok" : "warn") : "off");
   const decideState = $derived(decider.enabled ? (decider.ready ? m.status_on() : m.status_needs_setup()) : m.status_off());
 
-  const sections = $derived<{ id: string; label: string; tone?: Tone }[]>([
+  const allSections = $derived<{ id: string; label: string; tone?: Tone }[]>([
     { id: "appearance", label: m.settings_appearance() },
     { id: "startup", label: m.settings_startup() },
     { id: "numbers", label: m.settings_numbers() },
@@ -156,9 +157,10 @@
     { id: "updates", label: m.settings_updates() },
     { id: "diagnostics", label: m.settings_diagnostics() },
   ]);
+  const sections = $derived(allSections.filter((s) => !omit.includes(s.id)));
   const active = $derived(sections.some((s) => s.id === appOptions.section) ? appOptions.section : "appearance");
   /** Every section on one page, under its own heading, with no section list (the phone layout). */
-  const show = (id: string) => stacked || active === id;
+  const show = (id: string) => !omit.includes(id) && (stacked || active === id);
   let scroller = $state<HTMLDivElement | null>(null);
 
   function go(id: string) {

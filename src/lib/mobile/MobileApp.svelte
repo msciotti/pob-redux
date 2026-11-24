@@ -14,6 +14,9 @@
   import MoreView from "./MoreView.svelte";
   import Sheet from "./Sheet.svelte";
 
+  /** Settings for the local MCP server, the desktop updater and log files mean nothing on a phone. */
+  const DESKTOP_ONLY_SETTINGS = ["mcp", "updates", "diagnostics"];
+
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: "ask", label: "Ask", icon: "M4 5h16v11H9l-5 4z" },
     { id: "tree", label: "Tree", icon: "M12 7v4M10.5 14.5l-4 1.5M13.5 14.5l4 1.5M14 5a2 2 0 1 1-4 0a2 2 0 0 1 4 0M7 17a2 2 0 1 1-4 0a2 2 0 0 1 4 0M21 17a2 2 0 1 1-4 0a2 2 0 0 1 4 0M14 13a2 2 0 1 1-4 0a2 2 0 0 1 4 0" },
@@ -91,7 +94,7 @@
     {:else if appOptions.open}
       <div class="fill-host">
         <div class="donebar"><b>Settings</b><button onclick={() => (appOptions.open = false)}>Done</button></div>
-        <SettingsView stacked />
+        <SettingsView stacked omit={DESKTOP_ONLY_SETTINGS} />
       </div>
     {:else if mobile.tab === "ask"}
       <div class="fill-host"><ChatPanel windowed /></div>
