@@ -73,7 +73,6 @@
         {@const st = status(t)}
         <li>
           <button class="row" class:current={t.id === chat.thread.id} disabled={chat.busy && t.id !== chat.thread.id} onclick={() => open(t)}>
-            <span class="mark" class:busy={st === "busy"} aria-hidden="true"></span>
             <span class="body">
               <span class="top">
                 <span class="title">{t.title || m.threads_new()}</span>
@@ -146,7 +145,6 @@
   .row {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
     width: 100%;
     min-height: 72px;
     padding: 12px 20px 12px 20px;
@@ -161,27 +159,6 @@
   }
   .row:disabled {
     opacity: 0.5;
-  }
-  .mark {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    margin-top: 5px;
-    border: 2px solid var(--fg-3);
-    border-radius: 50%;
-  }
-  .row.current .mark {
-    border-color: var(--fg-1);
-  }
-  .mark.busy {
-    border-color: var(--accent);
-    border-top-color: transparent;
-    animation: spin 0.9s linear infinite;
-  }
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
   .body {
     flex: 1;
@@ -288,10 +265,5 @@
     fill: none;
     stroke-width: 1.8;
     stroke-linecap: round;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .mark.busy {
-      animation: none;
-    }
   }
 </style>
