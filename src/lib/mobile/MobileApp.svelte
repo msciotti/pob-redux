@@ -97,7 +97,7 @@
         <SettingsView stacked omit={DESKTOP_ONLY_SETTINGS} />
       </div>
     {:else if mobile.tab === "ask"}
-      <div class="fill-host"><ChatPanel windowed /></div>
+      <div class="fill-host"><ChatPanel windowed compact /></div>
     {:else if mobile.tab === "tree"}
       <div class="fill-host"><TreeView /></div>
     {:else if mobile.tab === "gear"}

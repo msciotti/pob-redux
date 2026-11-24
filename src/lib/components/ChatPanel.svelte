@@ -18,7 +18,8 @@
   import { writeText } from "@tauri-apps/plugin-clipboard-manager";
   import { m } from "$lib/paraglide/messages";
 
-  let { windowed = false }: { windowed?: boolean } = $props();
+  /** `compact`: no thread rail; the threads and new-thread buttons sit in the header (the phone layout). */
+  let { windowed = false, compact = false }: { windowed?: boolean; compact?: boolean } = $props();
 
   const SIDE_KEY = "pob-redux:thread-sidebar";
   const ROOMY = 640;
@@ -27,8 +28,8 @@
   let titlesShown = $state(readTitlesShown());
   let peek = $state(false);
   const roomy = $derived(panelWidth >= ROOMY);
-  const sideFull = $derived(roomy ? titlesShown : peek);
-  const floating = $derived(!roomy && peek);
+  const sideFull = $derived(roomy && !compact ? titlesShown : peek);
+  const floating = $derived((!roomy || compact) && peek);
 
   function readTitlesShown() {
     try {
@@ -39,7 +40,7 @@
   }
 
   function toggleSide() {
-    if (!roomy) {
+    if (!roomy || compact) {
       peek = !peek;
       return;
     }
@@ -314,7 +315,7 @@
 <svelte:window onkeydown={onWindowKey} onpointerdown={closePeek} />
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<aside class="chat" class:windowed bind:clientWidth={panelWidth} style:width={windowed ? null : `${chat.width}px`} onkeydown={onPanelKey}>
+<aside class="chat" class:windowed class:compact bind:clientWidth={panelWidth} style:width={windowed ? null : `${chat.width}px`} onkeydown={onPanelKey}>
   {#if !windowed}<div
     class="grip"
     class:dragging
@@ -330,16 +331,28 @@
     ondblclick={() => chat.setWidth(DEFAULT_WIDTH, true)}
     title={m.chat_resize_title()}
   ></div>{/if}
-  <div class="sidewrap" class:floating bind:this={sidewrap}>
-    <ThreadSidebar full={sideFull} {floating} ontoggle={toggleSide} onpick={() => (peek = false)} />
-  </div>
+  {#if !compact || peek}
+    <div class="sidewrap" class:floating class:compact bind:this={sidewrap}>
+      <ThreadSidebar full={sideFull} {floating} ontoggle={toggleSide} onpick={() => (peek = false)} />
+    </div>
+  {/if}
   <div class="main">
     <div class="head">
+      {#if compact}
+        <button class="icon" title={m.threads_expand()} aria-label={m.threads_expand()} aria-expanded={peek} onclick={(e) => { e.stopPropagation(); toggleSide(); }}>
+          <Icon name="sidebar-simple" size={17} />
+        </button>
+      {/if}
       <span class="title">
         <span class="tname" title={chat.thread.title || m.threads_new()}>{chat.thread.title || m.threads_new()}</span>
         {#if game.isPoe1}<span class="beta" title={m.chat_poe1_beta_title()}>{m.chat_poe1_beta()}</span>{/if}
       </span>
       <div class="acts">
+        {#if compact}
+          <button class="icon" disabled={chat.busy} title={chat.busy ? m.threads_busy() : m.threads_new_title()} aria-label={m.threads_new()} onclick={() => chat.startThread()}>
+            <Icon name="plus-square" size={17} />
+          </button>
+        {/if}
         <button
           class="icon"
           title={m.chat_providers_title()}
@@ -625,6 +638,22 @@
   .sidewrap.floating {
     width: 44px;
   }
+  /* Compact: no rail; the open list lies over the conversation. */
+  .sidewrap.compact {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-right: 0;
+    z-index: 20;
+  }
+  /* iOS zooms into a focused field under 16px. */
+  .chat.compact :global(textarea),
+  .chat.compact :global(input) {
+    font-size: 16px;
+  }
+  .sidewrap.compact :global(.side.floating) {
+    width: min(320px, 85vw);
+  }
   .main {
     display: flex;
     flex: 1;
@@ -666,6 +695,9 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+  .head > .title {
+    flex: 1;
   }
   .title {
     display: flex;

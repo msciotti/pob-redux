@@ -29,6 +29,16 @@ const DEFAULTS: Record<string, unknown> = {
 /** Assistant tools that are bridge methods of the same name, so Keep and Undo work in the browser. */
 const BRIDGE_TOOLS = new Set(["checkpoint", "rollback", "list_checkpoints", "get_stats"]);
 
+// With ?demo, a stand-in assistant counts as set up, so the chat panel shows the
+// demo conversation and composer. It cannot answer: sending fails at ai_chat_stream.
+if (new URLSearchParams(location.search).has("demo")) {
+  DEFAULTS.ai_providers = [{
+    id: "demo", label: "Demo (no model)", kind: "openai", base_url: null, default_base: null, has_key: true, key_hint: null,
+    agent: null, login: null, install: null, download: null, install_command: null, ready: true,
+  }];
+  DEFAULTS.ai_models = [{ id: "demo", label: "Demo" }];
+}
+
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (cmd === "ai_call_tool" && BRIDGE_TOOLS.has(String(args?.name))) {
     const r = await invoke<{ result: T }>("engine_call", { method: args!.name, params: args!.args ?? null });
