@@ -63,7 +63,6 @@
 
 <div class="page">
   <div class="scroll">
-    <h1>{m.threads_title()}</h1>
     {#if searching}
       <input bind:this={field} bind:value={query} class="search" type="search" placeholder={m.threads_search()} aria-label={m.threads_search()} />
     {/if}
@@ -120,15 +119,8 @@
     flex-direction: column;
     padding-bottom: 84px;
   }
-  h1 {
-    margin: 0;
-    padding: 18px max(20px, env(safe-area-inset-right, 0px)) 6px max(20px, env(safe-area-inset-left, 0px));
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--fg-0);
-  }
   .search {
-    margin: 6px 16px 4px;
+    margin: 12px 16px 4px;
     padding: 10px 14px;
     border: 1px solid var(--line-1);
     border-radius: 12px;
