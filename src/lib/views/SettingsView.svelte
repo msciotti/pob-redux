@@ -21,6 +21,8 @@
   import Icon from "$lib/components/Icon.svelte";
   import { m } from "$lib/paraglide/messages";
 
+  let { stacked = false }: { stacked?: boolean } = $props();
+
   type Tone = "ok" | "warn" | "off" | undefined;
 
   let reportNote = $state("");
@@ -155,6 +157,8 @@
     { id: "diagnostics", label: m.settings_diagnostics() },
   ]);
   const active = $derived(sections.some((s) => s.id === appOptions.section) ? appOptions.section : "appearance");
+  /** Every section on one page, under its own heading, with no section list (the phone layout). */
+  const show = (id: string) => stacked || active === id;
   let scroller = $state<HTMLDivElement | null>(null);
 
   function go(id: string) {
@@ -174,6 +178,13 @@
   function close() {
     appOptions.open = false;
   }
+
+  // Stacked, a request for one section (the chat's settings button asks for Assistant) scrolls to it.
+  $effect(() => {
+    if (!stacked || !scroller || active === "appearance") return;
+    const el = scroller.querySelector<HTMLElement>(`[data-anchor="${active}"]`);
+    if (el) scroller.scrollTop = el.offsetTop - 8;
+  });
 
   onMount(() => {
     void decider.init();
@@ -202,7 +213,7 @@
   </header>
 {/snippet}
 
-<div class="settings">
+<div class="settings" class:stacked>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <nav class="snav scroll-hint" {@attach scrollHint} aria-label={m.settings_sections()} onkeydown={onNavKey}>
     <div class="label ntitle">{m.settings_title()}</div>
@@ -217,7 +228,7 @@
 
   <div class="sbody scroll-hint" {@attach scrollHint} bind:this={scroller}>
     <div class="sinner">
-      {#if active === "appearance"}
+      {#if show("appearance")}<div data-anchor="appearance"></div>
         {@render head(m.settings_appearance(), m.settings_appearance_desc())}
         <div class="rows">
           <div class="opt">
@@ -327,7 +338,8 @@
             <input class="switch" type="checkbox" role="switch" checked={ui.treeAscCentre} onchange={(e) => ui.setTreeAscCentre((e.target as HTMLInputElement).checked)} />
           </label>
         </div>
-      {:else if active === "startup"}
+      {/if}
+      {#if show("startup")}<div data-anchor="startup"></div>
         {@render head(m.settings_startup(), m.settings_startup_desc())}
         <div class="rows">
           <label class="opt">
@@ -338,7 +350,8 @@
             <input class="switch" type="checkbox" role="switch" checked={ui.startEmpty} onchange={(e) => ui.setStartEmpty((e.target as HTMLInputElement).checked)} />
           </label>
         </div>
-      {:else if active === "numbers"}
+      {/if}
+      {#if show("numbers")}<div data-anchor="numbers"></div>
         {@render head(m.settings_numbers(), m.settings_numbers_desc())}
         {#if v}
           <div class="cols">
@@ -417,7 +430,8 @@
         {:else}
           <p class="note">{m.settings_numbers_waiting()}</p>
         {/if}
-      {:else if active === "assistant"}
+      {/if}
+      {#if show("assistant")}<div data-anchor="assistant"></div>
         {@render head(m.settings_assistant(), m.settings_assistant_desc(), chat.current?.label ?? "", assistantTone)}
         <AssistantSettings />
         <h2 class="label ghead">{m.assistant_changes()}</h2>
@@ -431,7 +445,8 @@
           </label>
         </div>
         <p class="note">{m.provider_intro_agents()}</p>
-      {:else if active === "mcp"}
+      {/if}
+      {#if show("mcp")}<div data-anchor="mcp"></div>
         {@render head(m.settings_mcp(), m.settings_mcp_desc(), mcpState, mcpTone)}
         <h2 class="label ghead">{m.settings_mcp_server()}</h2>
         <div class="rows">
@@ -485,7 +500,8 @@
             </div>
           </div>
         {/if}
-      {:else if active === "experimental"}
+      {/if}
+      {#if show("experimental")}<div data-anchor="experimental"></div>
         {@render head(m.settings_experimental(), m.settings_experimental_desc(), decideState, decideTone)}
         <div class="rows master" class:live={decider.enabled}>
           <label class="opt">
@@ -680,7 +696,8 @@
             <input class="switch" type="checkbox" role="switch" checked={ui.squirePreview} onchange={(e) => ui.setSquirePreview((e.target as HTMLInputElement).checked)} />
           </label>
         </div>
-      {:else if active === "updates"}
+      {/if}
+      {#if show("updates")}<div data-anchor="updates"></div>
         {@render head(m.settings_updates(), m.settings_updates_desc(), version)}
         <div class="rows">
           <div class="opt">
@@ -729,7 +746,8 @@
           </div>
         </div>
         <p class="note">{m.ggg_disclaimer()}</p>
-      {:else if active === "diagnostics"}
+      {/if}
+      {#if show("diagnostics")}<div data-anchor="diagnostics"></div>
         {@render head(m.settings_diagnostics(), m.settings_diagnostics_desc())}
         <div class="rows">
           <div class="opt">
@@ -818,6 +836,32 @@
   .sinner {
     max-width: 1080px;
     padding: 26px 36px 48px;
+  }
+  /* Stacked: one column at any width, each section after the last. */
+  .stacked .snav {
+    display: none;
+  }
+  .stacked .sinner {
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .stacked [data-anchor]:not(:first-child) {
+    height: 28px;
+  }
+  .stacked .phead {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+  .stacked .phead h1 {
+    font-size: var(--fs-lg);
+  }
+  .stacked .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stacked .opt {
+    flex-wrap: wrap;
+  }
+  .stacked .langpick {
+    width: 100%;
   }
   .phead {
     padding-bottom: 16px;

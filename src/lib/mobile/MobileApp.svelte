@@ -91,7 +91,7 @@
     {:else if appOptions.open}
       <div class="fill-host">
         <div class="donebar"><b>Settings</b><button onclick={() => (appOptions.open = false)}>Done</button></div>
-        <div class="scroll"><SettingsView /></div>
+        <SettingsView stacked />
       </div>
     {:else if mobile.tab === "ask"}
       <div class="fill-host"><ChatPanel windowed /></div>
@@ -269,11 +269,6 @@
     flex-direction: column;
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
-  }
-  .fill-host .scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
   }
   .donebar {
     display: flex;
