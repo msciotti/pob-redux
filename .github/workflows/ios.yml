@@ -35,7 +35,6 @@ jobs:
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.0'
-      TARGET_SYS: iOS
     steps:
       - uses: actions/checkout@v7
       - name: Read pinned PoB commit
@@ -63,6 +62,8 @@ jobs:
       - name: tauri ios init
         run: bun tauri ios init --ci 2>&1 | tee init.log
       - name: Build unsigned app
+        env:
+          TARGET_SYS: iOS
         run: |
           set -o pipefail
           bun tauri ios build --ci --target aarch64 --debug 2>&1 | tee build.log || true
