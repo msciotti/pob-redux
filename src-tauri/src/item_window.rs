@@ -1,5 +1,7 @@
 //! An item's detail popped out into its own window, so the main window keeps its database list in view.
 
+#[allow(unused_imports)]
+use crate::winshim::{BuilderExt as _, WindowExt as _};
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};

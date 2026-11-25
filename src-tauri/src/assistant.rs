@@ -1,5 +1,7 @@
 //! The assistant popped out into its own window. The conversation crosses between windows through `HANDOFF`.
 
+#[allow(unused_imports)]
+use crate::winshim::{BuilderExt as _, WindowExt as _};
 use std::sync::Mutex;
 
 use serde::Deserialize;

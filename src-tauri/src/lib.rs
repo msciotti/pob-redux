@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+mod winshim;
 mod art;
 mod downloads;
 mod game_data;
@@ -1196,7 +1197,7 @@ fn serve_pob_asset(
 }
 
 /// Windows and Linux pass the launch link as an argument; macOS through the deep-link plugin.
-fn start_link(app: &tauri::AppHandle) -> Option<links::Link> {
+fn start_link(#[allow(unused_variables)] app: &tauri::AppHandle) -> Option<links::Link> {
     if let Some(link) = links::from_args() {
         return Some(link);
     }
@@ -1214,7 +1215,7 @@ fn deliver_link(app: &tauri::AppHandle, link: links::Link) {
     log::info!("link: {}", link.url);
     *app.state::<AppState>().pending_link.lock().unwrap() = Some(link);
     if let Some(w) = app.get_webview_window("main") {
-        let _ = w.unminimize();
+        let _ = winshim::WindowExt::unminimize(&w);
         let _ = w.set_focus();
     }
     let _ = app.emit("open-link", ());

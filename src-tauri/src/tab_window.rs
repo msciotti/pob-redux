@@ -1,5 +1,7 @@
 //! A main-window tab torn off into its own window, labelled `tab-<view>`.
 
+#[allow(unused_imports)]
+use crate::winshim::{BuilderExt as _, WindowExt as _};
 use serde::Deserialize;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 

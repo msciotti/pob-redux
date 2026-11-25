@@ -1,5 +1,7 @@
 //! Trade searches in an app window that shows pathofexile.com's own trade page.
 
+#[allow(unused_imports)]
+use crate::winshim::{BuilderExt as _, WindowExt as _};
 use std::sync::Mutex;
 
 use tauri::webview::{NewWindowResponse, PageLoadEvent};
