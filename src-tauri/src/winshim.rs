@@ -22,6 +22,7 @@ impl<R: Runtime> WindowExt for WebviewWindow<R> {
 
 pub trait BuilderExt: Sized {
     fn decorations(self, decorations: bool) -> Self;
+    fn center(self) -> Self;
 }
 
 impl<'a, R: Runtime, M: tauri::Manager<R>> BuilderExt for WebviewWindowBuilder<'a, R, M> {
@@ -33,6 +34,17 @@ impl<'a, R: Runtime, M: tauri::Manager<R>> BuilderExt for WebviewWindowBuilder<'
         #[cfg(not(desktop))]
         {
             let _ = decorations;
+            self
+        }
+    }
+
+    fn center(self) -> Self {
+        #[cfg(desktop)]
+        {
+            WebviewWindowBuilder::center(self)
+        }
+        #[cfg(not(desktop))]
+        {
             self
         }
     }
