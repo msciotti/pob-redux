@@ -66,12 +66,17 @@ jobs:
       - name: Pass LuaJIT build env through Xcode
         # xcodebuild's "Build Rust Code" phase drops MACOSX_DEPLOYMENT_TARGET (it's an iOS SDK build),
         # and LuaJIT's host-tool Makefile refuses to run without it. Cargo [env] survives Xcode.
+        # Xcode also exports SDKROOT=iPhoneOS, so LuaJIT's host tools (minilua/buildvm) get linked
+        # against the iOS SDK and macOS kills them (Killed: 9). Pin HOST_CC to a macOS sysroot+target.
         run: |
+          MACSDK=$(xcrun --sdk macosx --show-sdk-path)
+          CLANG=$(xcrun --sdk macosx --find clang)
           mkdir -p ~/.cargo
-          cat >> ~/.cargo/config.toml <<'EOF'
+          cat >> ~/.cargo/config.toml <<EOF
           [env]
           MACOSX_DEPLOYMENT_TARGET = { value = "14.0", force = true }
           TARGET_SYS = { value = "iOS", force = true }
+          HOST_CC = { value = "$CLANG -target arm64-apple-macos14.0 -isysroot $MACSDK", force = true }
           EOF
           cat ~/.cargo/config.toml
       - name: Build unsigned app
