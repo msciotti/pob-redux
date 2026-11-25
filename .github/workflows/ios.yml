@@ -62,13 +62,7 @@ jobs:
       - name: tauri ios init
         run: bun tauri ios init --ci 2>&1 | tee init.log
       - name: Turn off code signing (unsigned build; sideloader signs later)
-        run: |
-          f=src-tauri/gen/apple/pob-redux.xcodeproj/project.pbxproj
-          sed -i '' 's/buildSettings = {/buildSettings = {\
-\t\t\t\tCODE_SIGNING_ALLOWED = NO;\
-\t\t\t\tCODE_SIGNING_REQUIRED = NO;\
-\t\t\t\tCODE_SIGN_IDENTITY = "";/' "$f"
-          grep -c CODE_SIGNING_ALLOWED "$f"
+        run: python3 scripts/ios-nosign.py src-tauri/gen/apple/pob-redux.xcodeproj/project.pbxproj
       - name: Build unsigned app
         env:
           TARGET_SYS: iOS
