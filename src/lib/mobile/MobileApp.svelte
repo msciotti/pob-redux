@@ -5,6 +5,7 @@
   import { chat } from "$lib/state/chat.svelte";
   import { followOtherWindows } from "$lib/state/tabs.svelte";
   import TreeView from "$lib/views/TreeView.svelte";
+  import type { TNode } from "$lib/tree/model";
   import SettingsView from "$lib/views/SettingsView.svelte";
   import ChatPanel from "$lib/components/ChatPanel.svelte";
   import { appOptions } from "$lib/state/options.svelte";
@@ -45,6 +46,14 @@
 
   const initials = (s: string | null | undefined) => (s ?? "?").slice(0, 2);
   const changes = $derived(mobile.configChanges);
+
+  /** Tree card → Ask tab with a starter question about the node (same pattern as Gear's "Ask about this item"). */
+  function askAboutNode(n: TNode) {
+    const kind = n.kind === "keystone" ? "keystone" : n.kind === "notable" ? "notable" : n.kind === "mastery" ? "mastery" : "node";
+    const have = build.tree?.allocatedNodes?.includes(n.id);
+    chat.input = have ? `Is the ${n.name} ${kind} still worth it for my build, or should I respec those points?` : `Should I path to the ${n.name} ${kind}? What would it do for my build and what does it cost?`;
+    mobile.go("ask");
+  }
 </script>
 
 <div class="m-app">
@@ -99,7 +108,7 @@
     {:else if mobile.tab === "ask"}
       <div class="fill-host"><ChatPanel windowed compact /></div>
     {:else if mobile.tab === "tree"}
-      <div class="fill-host"><TreeView /></div>
+      <div class="fill-host"><TreeView touch onask={askAboutNode} /></div>
     {:else if mobile.tab === "gear"}
       <GearView />
     {:else if mobile.tab === "skills"}

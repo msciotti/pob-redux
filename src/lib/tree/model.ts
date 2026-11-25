@@ -733,7 +733,9 @@ export class NodeIndex {
   private key(x: number, y: number) {
     return `${Math.floor(x / this.cell)}:${Math.floor(y / this.cell)}`;
   }
-  nearest(x: number, y: number, filter?: (n: TNode) => boolean): TNode | null {
+  /** `slop` widens every node's hit radius (tree units), for fingers; capped so the 3×3 cell search still covers it. */
+  nearest(x: number, y: number, filter?: (n: TNode) => boolean, slop = 0): TNode | null {
+    slop = Math.min(Math.max(0, slop), this.cell / 2);
     const cx = Math.floor(x / this.cell);
     const cy = Math.floor(y / this.cell);
     let best: TNode | null = null;
@@ -745,7 +747,7 @@ export class NodeIndex {
         for (const n of b) {
           if (filter && !filter(n)) continue;
           const d = Math.hypot(n.x - x, n.y - y);
-          if (d <= n.r && d < bestD) {
+          if (d <= n.r + slop && d < bestD) {
             bestD = d;
             best = n;
           }

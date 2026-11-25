@@ -24,6 +24,17 @@
   import { m } from "$lib/paraglide/messages";
   import { recipeArt } from "$lib/item-art";
 
+  /**
+   * `touch`: the phone layout. One finger pans, two pinch-zoom, a tap selects a node and opens a card
+   * (Allocate / Remove / Ask) instead of allocating straight away; the toolbar is cut down to fit.
+   * Desktop passes nothing and is unchanged.
+   */
+  let { touch = false, onask }: { touch?: boolean; onask?: (node: TNode) => void } = $props();
+  /** The node whose card is open (touch only). */
+  let selected = $state<TNode | null>(null);
+  /** Extra hit radius for fingers, in CSS px. */
+  const FINGER_PX = 22;
+
   let timelessOpen = $state(false);
   let canvas = $state<HTMLCanvasElement | null>(null);
   let wrap = $state<HTMLDivElement | null>(null);
@@ -1811,9 +1822,105 @@
     attrMenu = null;
     masteryMenu = null;
     tattooMenu = null;
+    if (touch) return touchDown(e);
     if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
     canvas!.setPointerCapture(e.pointerId);
     drag = { sx: e.clientX, sy: e.clientY, cx0: cx, cy0: cy, moved: false, button: e.button };
+  }
+
+  // --- touch (phone layout) ---
+  const fingers = new Map<number, { x: number; y: number }>();
+  type Gesture =
+    | { kind: "pan"; sx: number; sy: number; cx0: number; cy0: number; moved: boolean }
+    | { kind: "pinch"; d0: number; s0: number; wx: number; wy: number };
+  let gesture: Gesture | null = null;
+
+  function local(e: PointerEvent) {
+    const r = canvas!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function startPan(p: { x: number; y: number }, moved: boolean) {
+    gesture = { kind: "pan", sx: p.x, sy: p.y, cx0: cx, cy0: cy, moved };
+  }
+
+  function startPinch() {
+    const [a, b] = [...fingers.values()];
+    const [wx, wy] = toWorld((a.x + b.x) / 2, (a.y + b.y) / 2);
+    gesture = { kind: "pinch", d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), s0: scale, wx, wy };
+    zooming = true;
+  }
+
+  function touchDown(e: PointerEvent) {
+    canvas!.setPointerCapture(e.pointerId);
+    fingers.set(e.pointerId, local(e));
+    if (fingers.size === 1) startPan(local(e), false);
+    else if (fingers.size === 2) startPinch();
+  }
+
+  function touchMove(e: PointerEvent) {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, local(e));
+    if (!gesture) return;
+    if (gesture.kind === "pinch" && fingers.size >= 2) {
+      const [a, b] = [...fingers.values()];
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      scale = Math.min(1.2, Math.max(0.012, gesture.s0 * (Math.hypot(a.x - b.x, a.y - b.y) / gesture.d0)));
+      // Keep the world point that started under the fingers' midpoint under it (pans and zooms at once).
+      cx = gesture.wx - (mx - w / 2) / scale;
+      cy = gesture.wy - (my - h / 2) / scale;
+      invalidate();
+    } else if (gesture.kind === "pan") {
+      const p = fingers.get(e.pointerId)!;
+      const dx = p.x - gesture.sx;
+      const dy = p.y - gesture.sy;
+      if (!gesture.moved && Math.hypot(dx, dy) > 8) {
+        gesture.moved = true;
+        panning = true;
+      }
+      if (gesture.moved) {
+        cx = gesture.cx0 - dx / scale;
+        cy = gesture.cy0 - dy / scale;
+        invalidate();
+      }
+    }
+  }
+
+  function touchUp(e: PointerEvent, cancelled = false) {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.delete(e.pointerId);
+    const g = gesture;
+    if (g?.kind === "pinch") {
+      // Lifting one finger of a pinch carries on as a pan, but is never a tap.
+      if (fingers.size === 1) startPan([...fingers.values()][0], true);
+      else if (fingers.size === 0) gesture = null;
+      if (fingers.size < 2) {
+        zooming = false;
+        invalidate();
+      }
+      return;
+    }
+    if (fingers.size > 0) return;
+    gesture = null;
+    panning = false;
+    invalidate();
+    if (!cancelled && g?.kind === "pan" && !g.moved) tap(g.sx, g.sy);
+  }
+
+  function tap(sx: number, sy: number) {
+    mouse = { x: sx, y: sy };
+    clearFocus();
+    if (!index) return;
+    const [wx, wy] = toWorld(sx, sy);
+    const n = index.nearest(wx, wy, undefined, FINGER_PX / scale);
+    selected = n;
+    setHover(n);
+  }
+
+  function closeCard() {
+    selected = null;
+    setHover(null);
   }
 
   function tipTop() {
@@ -1921,6 +2028,7 @@
   }
 
   function onPointerMove(e: PointerEvent) {
+    if (touch) return touchMove(e);
     if (drag) {
       const dx = e.clientX - drag.sx;
       const dy = e.clientY - drag.sy;
@@ -1980,6 +2088,7 @@
   }
 
   async function onPointerUp(e: PointerEvent) {
+    if (touch) return touchUp(e);
     if (!drag) return;
     const wasClick = !drag.moved;
     const button = drag.button;
@@ -1988,7 +2097,12 @@
     if (wasClick) clearFocus();
     else invalidate();
     if (!wasClick || !hover || build.busy > 0 || held) return;
-    const n = hover;
+    await activate(hover, button);
+  }
+
+  /** What a click does to a node: left allocates/removes, right opens the attribute/mastery/tattoo menu. */
+  async function activate(n: TNode, button: number) {
+    if (build.busy > 0) return;
     if (button === 0 && shiftDown && trace.length) {
       const ids = trace;
       trace = [];
@@ -2040,6 +2154,7 @@
   }
 
   function onLeave() {
+    if (touch) return; // a lifted finger "leaves"; the card keeps the selection
     overCanvas = false;
     setHover(null);
   }
@@ -2286,7 +2401,25 @@
   });
 </script>
 
-<div class="page" class:dockbottom={ui.treeBarDock === "bottom"}>
+<div class="page" class:dockbottom={ui.treeBarDock === "bottom" && !touch} class:touch>
+  {#if touch}
+    <!-- Phone: one row. Spec, points, search, fit/class, undo/redo. Power, compare, timeless, URLs stay on desktop. -->
+    <div class="bar tbar">
+      <select class="select spec" value={activeSpec?.index ?? 1} onchange={onSpecChange} disabled={build.busy > 0} aria-label={m.tree_spec_title()}>
+        {#each build.specs as s}
+          <option value={s.index}>{stripPobText(s.title)} · {s.allocatedNodeCount}</option>
+        {/each}
+      </select>
+      {#if build.info}
+        {@const pts = build.info.points}
+        <span class="num tpts"><span class:over={pts.used > pts.max}>{pts.used}<span class="dim">/{pts.max}</span></span></span>
+      {/if}
+      <input class="input search tsearch" type="search" enterkeyhint="search" placeholder={m.tree_search()} bind:value={search} oninput={clearFocus} onkeydown={(e) => e.key === "Enter" && jumpToMatch()} />
+      <button class="btn sm ghost" onclick={focusClass}>{m.tree_class()}</button>
+      <button class="btn sm ghost icon" onclick={fitAll} aria-label={m.tree_fit()}><Icon name="corners-out" size={16} /></button>
+      <button class="btn sm ghost icon" onclick={() => build.undo()} aria-label={m.tree_undo()}><Icon name="arrow-counter-clockwise" size={16} /></button>
+    </div>
+  {:else}
   <div class="bar">
     <div class="group">
       {#if renaming}
@@ -2422,6 +2555,7 @@
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="11" height="11" rx="1.5" /><path d={ui.treeBarDock === "top" ? "M0.5 8.5h11" : "M0.5 3.5h11"} /></svg>
     </button>
   </div>
+  {/if}
   <div class="tree scope-dark" bind:this={wrap}>
     <canvas
       bind:this={canvas}
@@ -2430,6 +2564,7 @@
       onpointerdown={onPointerDown}
       onpointermove={onPointerMove}
       onpointerup={onPointerUp}
+      onpointercancel={(e) => touch && touchUp(e, true)}
       onpointerleave={onLeave}
       oncontextmenu={(e) => e.preventDefault()}
     ></canvas>
@@ -2582,7 +2717,7 @@
       </div>
     {/if}
   
-    {#if hover && !attrMenu && !masteryMenu}
+    {#if hover && !attrMenu && !masteryMenu && !touch}
       {@const ov = overrides[String(hover.id)]}
       {@const socketed = hover.kind === "socket" ? sockets.get(hover.id) : undefined}
       {@const notCalc = new Set(build.tree?.unsupported?.[String(hover.id)] ?? [])}
@@ -2630,6 +2765,45 @@
         {@const r = wrap?.getBoundingClientRect()}
         <PobTooltip lines={jewelTip.lines} header={jewelTip.header} itemArt={jewelTip.itemArt} x={(r?.left ?? 0) + place.jewel} y={(r?.top ?? 0) + (held ? held.top : Math.min(mouse.y + 18, h - 60))} width={jewelTipW} />
       {/if}
+    {/if}
+    {#if touch && selected && !attrMenu && !masteryMenu && !tattooMenu && !classConfirm}
+      {@const n = selected}
+      {@const ov = overrides[String(n.id)]}
+      {@const isAlloc = allocated.has(n.id)}
+      <!-- Phone: a tapped node opens this card (a bottom sheet over the tree) instead of a hover tip. -->
+      <div class="ncard" role="dialog" aria-label={ov?.name ?? n.name}>
+        <div class="grab"></div>
+        <div class="nhead">
+          <b class:key={n.kind === "keystone"} class:notable={n.kind === "notable"}>{ov?.name ?? n.name}</b>
+          <span class="dim small">{n.asc ?? n.kind}</span>
+        </div>
+        <div class="nbody">
+          {#each ov?.stats?.length ? ov.stats : n.stats as s}<div class="nstat">{s}</div>{/each}
+          {#if !isAlloc && n.masteryEffects?.length}
+            {#each n.masteryEffects as e (e.effect)}<div class="nstat dim">• {e.stats.join(" / ")}</div>{/each}
+          {/if}
+        </div>
+        <div class="nfoot dim small">
+          {#if hoverBlocked}<span class="bad">{hoverBlocked}</span>
+          {:else if isAlloc}{hoverDep.size > 1 ? m.tree_click_removes({ count: hoverDep.size }) : m.tree_allocated()}
+          {:else if hoverCost != null}{m.tree_point_cost({ count: hoverCost })}
+          {/if}
+        </div>
+        <div class="nact">
+          {#if !hoverBlocked && n.kind !== "classStart" && n.kind !== "ascStart"}
+            <button class="btn primary" disabled={build.busy > 0} onclick={async () => { selected = null; await activate(n, 0); setHover(null); }}>
+              {isAlloc ? "Remove" : hoverCost != null && hoverCost > 1 ? `Allocate ${hoverCost}` : "Allocate"}
+            </button>
+          {/if}
+          {#if n.isAttribute || (n.kind === "mastery" && isAlloc)}
+            <button class="btn" disabled={build.busy > 0} onclick={() => { selected = null; void activate(n, 2); }}>{n.isAttribute ? "Attribute…" : "Effect…"}</button>
+          {/if}
+          {#if onask}
+            <button class="btn" onclick={() => { const node = n; closeCard(); onask(node); }}>Ask about this</button>
+          {/if}
+          <button class="btn ghost" onclick={closeCard}>{m.common_close()}</button>
+        </div>
+      </div>
     {/if}
     {#if keywords}
       {@const all = keywords.keywords}
@@ -3058,6 +3232,100 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+  }
+
+  /* --- phone layout (touch) --- */
+  .tbar {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tbar .spec {
+    max-width: 34vw;
+    min-width: 0;
+  }
+  .tbar .tsearch {
+    flex: 1;
+    min-width: 80px;
+    font-size: 16px; /* under 16px iOS zooms the page on focus */
+  }
+  .tbar .tpts {
+    white-space: nowrap;
+  }
+  .page.touch .tbar .btn {
+    min-height: 34px;
+    min-width: 34px;
+  }
+  .page.touch .menu {
+    /* Attribute / mastery / tattoo menus: full-width sheet with finger-sized rows. */
+    left: 8px !important;
+    right: 8px;
+    top: auto !important;
+    bottom: 8px;
+    max-height: 60%;
+    overflow-y: auto;
+  }
+  .page.touch .menu .mi {
+    min-height: 44px;
+  }
+  .ncard {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    max-height: 55%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 6px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-1);
+    border-top: 1px solid var(--line-1);
+    border-radius: 14px 14px 0 0;
+    box-shadow: var(--shadow-pop);
+  }
+  .ncard .grab {
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-1);
+  }
+  .nhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .nhead b.notable {
+    color: var(--accent, inherit);
+  }
+  .nhead b.key {
+    color: var(--warn, inherit);
+  }
+  .nbody {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.35;
+  }
+  .nstat {
+    white-space: pre-line;
+  }
+  .nfoot .bad {
+    color: var(--bad);
+  }
+  .nact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .nact .btn {
+    min-height: 40px;
+    flex: 1 1 auto;
   }
   .menu .label {
     padding: 2px 6px 6px;
