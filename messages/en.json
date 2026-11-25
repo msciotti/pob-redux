@@ -1854,5 +1854,10 @@
   "items_empty_slot": "Empty",
   "items_equipment_hint": "Hover to inspect · Click to edit",
   "items_equipment_hint_add": "Hover to inspect · Click to edit or add · Right-click for more",
-  "items_assigned_gems": "Assigned gems"
+  "items_assigned_gems": "Assigned gems",
+
+  "assistant_status_needs_key": "Needs an API key",
+  "assistant_status_key_set": "Key set",
+  "provider_key_required": "Required. Stored in the system keychain, never in the app's files.",
+  "provider_key_get": "Get a key from {name}"
 }

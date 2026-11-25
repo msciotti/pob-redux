@@ -20,11 +20,14 @@
 
 <script lang="ts">
   let { id, size = 14 }: { id: string; size?: number } = $props();
+  /** Hosted API presets reuse their vendor's mark. */
+  const ALIAS: Record<string, string> = { anthropic: "claude", openai: "codex" };
+  const mark = $derived(MARKS[ALIAS[id] ?? id]);
 </script>
 
-{#if MARKS[id]}
+{#if mark}
   <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true" class="mark">
-    <path d={MARKS[id]} />
+    <path d={mark} />
   </svg>
 {:else}
   <span class="mark initial" style:width="{size}px" style:height="{size}px" style:font-size="{Math.round(size * 0.7)}px" aria-hidden="true">{id.slice(0, 1).toUpperCase()}</span>

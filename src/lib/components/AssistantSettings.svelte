@@ -36,6 +36,13 @@
   let copied = $state("");
   let now = $state(Date.now());
 
+  /** Where each hosted provider hands out API keys. */
+  const KEY_PAGES: Record<string, string> = {
+    anthropic: "https://console.anthropic.com/settings/keys",
+    openai: "https://platform.openai.com/api-keys",
+    "openrouter-chat": "https://openrouter.ai/keys",
+  };
+
   const version = (v: string | null | undefined) => v?.match(/\d+(?:\.\d+)+/)?.[0] ?? "";
 
   function host(url: string) {
@@ -48,6 +55,7 @@
 
   function status(x: ProviderStatus): { text: string; tone: "ok" | "warn" | "bad" } {
     const a = x.agent;
+    if (x.hosted) return x.has_key ? { text: m.assistant_status_key_set(), tone: "ok" } : { text: m.assistant_status_needs_key(), tone: "warn" };
     if (!a && !x.base_url) return { text: m.assistant_status_no_address(), tone: "warn" };
     if (!a) return { text: x.default_base ? m.assistant_status_local() : host(x.base_url!), tone: "ok" };
     if (!a.installed) return { text: m.assistant_status_missing(), tone: "bad" };
@@ -319,6 +327,7 @@
             <div class="opt col"><span class="hint">{notes[p.id]}</span></div>
           {/if}
         {/if}
+        {#if !p.hosted}
         <div class="opt">
           <span>
             {p.agent ? m.assistant_path() : m.assistant_address()}
@@ -335,16 +344,23 @@
             <button class={["btn", "sm", { ghost: p.agent || p.base_url }]} disabled={!location.trim() && (!!p.agent || !p.base_url)} onclick={() => saveLocation(p)}>{m.common_save()}</button>
           </div>
         </div>
+        {/if}
         {#if !p.agent}
           <div class="opt">
             <span>
               {m.experimental_key()}
-              <span class={["hint", { mono: p.has_key }]}>{p.has_key ? `···${p.key_hint}` : m.provider_key_optional()}</span>
+              <span class={["hint", { mono: p.has_key }]}>{p.has_key ? `···${p.key_hint}` : p.hosted ? m.provider_key_required() : m.provider_key_optional()}</span>
+              {#if p.hosted && !p.has_key && KEY_PAGES[p.id]}
+                <button class="link" onclick={() => openUrl(KEY_PAGES[p.id])}>{m.provider_key_get({ name: p.label })}</button>
+              {/if}
             </span>
             <div class="acts">
               <input
                 class="input addr"
                 type="password"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
                 bind:value={keyDraft}
                 placeholder={p.has_key ? m.provider_replace_key() : m.provider_paste_key()}
                 aria-label={m.experimental_key()}

@@ -38,6 +38,8 @@ pub struct Provider {
     pub label: &'static str,
     /// None: the user has to give the address.
     pub default_base: Option<&'static str>,
+    /// Hosted services: the key is required, and the provider is listed on phones.
+    pub hosted: bool,
 }
 
 pub const PROVIDERS: &[Provider] = &[
@@ -45,11 +47,34 @@ pub const PROVIDERS: &[Provider] = &[
         id: "ollama-local",
         label: "Ollama (Local)",
         default_base: Some("http://localhost:11434/v1"),
+        hosted: false,
     },
     Provider {
         id: "openai-compatible",
         label: "OpenAI-compatible",
         default_base: None,
+        hosted: false,
+    },
+    // Hosted presets: what the phone app uses, since the coding-agent CLIs cannot run on iOS.
+    // All three speak `/chat/completions` + `/models`, so the panel's own loop drives them.
+    Provider {
+        id: "anthropic",
+        label: "Anthropic",
+        default_base: Some("https://api.anthropic.com/v1"),
+        hosted: true,
+    },
+    Provider {
+        id: "openai",
+        label: "OpenAI",
+        default_base: Some("https://api.openai.com/v1"),
+        hosted: true,
+    },
+    // Its own key slot: the decision model's OpenRouter backend keeps the `openrouter` slot.
+    Provider {
+        id: "openrouter-chat",
+        label: "OpenRouter",
+        default_base: Some("https://openrouter.ai/api/v1"),
+        hosted: true,
     },
 ];
 
@@ -103,6 +128,9 @@ fn require_base(app: &AppHandle, p: &Provider) -> Result<String, String> {
 
 fn with_key(app: &AppHandle, p: &Provider, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
     match stored_key(app, p.id) {
+        // Anthropic's OpenAI-compatible /chat/completions takes a Bearer key, but its /models only
+        // takes x-api-key + anthropic-version (checked against the live API). Send both.
+        Some(key) if p.id == "anthropic" => req.header("x-api-key", &key).header("anthropic-version", "2023-06-01").bearer_auth(key),
         Some(key) => req.bearer_auth(key),
         None => req,
     }
@@ -228,14 +256,22 @@ pub struct ProviderStatus {
     install_command: Option<&'static str>,
     /// Usable now, as far as the app can tell.
     ready: bool,
+    /// A hosted service at a fixed address: the settings page asks only for its key.
+    hosted: bool,
 }
 
 /// The CLIs first, then Ollama. `refresh` checks the CLIs again instead of
-/// using what was found at startup.
+/// using what was found at startup. On phones only the hosted providers are
+/// listed: the CLIs cannot be spawned on iOS and there is no local Ollama.
 #[tauri::command]
 pub async fn ai_providers(app: AppHandle, refresh: Option<bool>, only: Option<String>) -> Vec<ProviderStatus> {
-    let found = agent::statuses(&app, refresh.unwrap_or(false), only.as_deref().and_then(Cli::from_id)).await;
-    let agents = CLIS.into_iter().map(|cli: Cli| {
+    let mobile = cfg!(mobile);
+    let found = if mobile {
+        Default::default()
+    } else {
+        agent::statuses(&app, refresh.unwrap_or(false), only.as_deref().and_then(Cli::from_id)).await
+    };
+    let agents = CLIS.into_iter().filter(|_| !mobile).map(|cli: Cli| {
         let status = found.get(&cli).cloned().unwrap_or_default();
         ProviderStatus {
             id: cli.id(),
@@ -251,20 +287,23 @@ pub async fn ai_providers(app: AppHandle, refresh: Option<bool>, only: Option<St
             install: Some(cli.install()),
             download: cli.download(),
             install_command: cli.install_command(),
+            hosted: false,
         }
     });
-    let http = PROVIDERS.iter().map(|p| {
+    let http = PROVIDERS.iter().filter(|p| !mobile || p.hosted).map(|p| {
         let base = base_url(&app, p);
         let key = stored_key(&app, p.id);
         ProviderStatus {
             id: p.id,
             label: p.label,
             kind: ApiKind::OpenAiCompatible,
-            ready: base.is_some(),
+            // A hosted service is unusable without a key; a self-hosted one may not need one.
+            ready: base.is_some() && (!p.hosted || key.is_some()),
             base_url: base,
             default_base: p.default_base,
             has_key: key.is_some(),
             key_hint: key.as_deref().map(hint),
+            hosted: p.hosted,
             agent: None,
             login: None,
             install: None,
@@ -387,7 +426,11 @@ struct RawModel {
 /// Endpoints that are not chat models, such as embeddings.
 fn is_chat_model(id: &str) -> bool {
     let l = id.to_ascii_lowercase();
-    const EXCLUDE: &[&str] = &["embed", "whisper", "tts", "rerank", "guard", "clip", "bge-", "nomic"];
+    const EXCLUDE: &[&str] = &[
+        "embed", "whisper", "tts", "rerank", "guard", "clip", "bge-", "nomic",
+        // OpenAI's /models also lists image, audio, realtime and moderation endpoints.
+        "dall-e", "gpt-image", "-audio", "realtime", "transcribe", "moderation", "davinci", "babbage", "sora",
+    ];
     !EXCLUDE.iter().any(|bad| l.contains(bad))
 }
 
@@ -396,6 +439,8 @@ fn is_recommended(id: &str) -> bool {
     let l = id.to_ascii_lowercase();
     const CURRENT: &[&str] = &[
         "llama-4", "llama3.3", "deepseek-v3", "deepseek-r1", "qwen3", "gemma4", "granite4", "mistral-large", "kimi-k2", "glm-4", "gpt-oss",
+        // Hosted frontier families (Anthropic, OpenAI, and the same through OpenRouter).
+        "claude-sonnet", "claude-opus", "claude-haiku", "gpt-5",
     ];
     CURRENT.iter().any(|c| l.contains(c))
 }
@@ -574,9 +619,19 @@ mod tests {
     fn only_known_providers_resolve() {
         assert!(find("ollama-local").is_ok());
         assert!(find("openai-compatible").is_ok());
-        assert!(find("anthropic").is_err());
+        assert!(find("anthropic").is_ok());
+        assert!(find("openai").is_ok());
+        assert!(find("openrouter-chat").is_ok());
+        assert!(find("claude").is_err()); // the CLI agent, not an HTTP provider
         assert!(find("evil.example.com").is_err());
         assert!(find("").is_err());
+    }
+
+    #[test]
+    fn hosted_presets_are_https() {
+        for p in PROVIDERS.iter().filter(|p| p.hosted) {
+            assert!(p.default_base.is_some_and(|b| b.starts_with("https://")), "{} must have an https default base", p.id);
+        }
     }
 
     #[test]
@@ -594,7 +649,7 @@ mod tests {
         assert!(super::known("openrouter").is_ok());
         assert!(super::known("ollama-local").is_ok());
         assert!(super::known("openai-compatible").is_ok());
-        assert!(super::known("anthropic").is_err());
+        assert!(super::known("anthropic").is_ok());
         assert!(super::known("claude").is_err());
         for p in PROVIDERS {
             assert!(!crate::decide::BACKENDS.iter().any(|b| b.key_id == p.id), "{} shares a key slot with a decision backend", p.id);

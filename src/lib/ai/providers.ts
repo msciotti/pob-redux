@@ -31,6 +31,8 @@ export interface ProviderStatus {
   /** The vendor's install command, run in a terminal from the settings page. */
   install_command: string | null;
   ready: boolean;
+  /** A hosted service at a fixed address (Anthropic, OpenAI, OpenRouter): only a key to set. */
+  hosted: boolean;
 }
 
 export type InstallProgress = { kind: "download"; done: number; total: number } | { kind: "unpack" };

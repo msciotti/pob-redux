@@ -34,7 +34,7 @@ const BRIDGE_TOOLS = new Set(["checkpoint", "rollback", "list_checkpoints", "get
 if (new URLSearchParams(location.search).has("demo")) {
   DEFAULTS.ai_providers = [{
     id: "demo", label: "Demo (no model)", kind: "openai", base_url: null, default_base: null, has_key: true, key_hint: null,
-    agent: null, login: null, install: null, download: null, install_command: null, ready: true,
+    agent: null, login: null, install: null, download: null, install_command: null, ready: true, hosted: false,
   }];
   DEFAULTS.ai_models = [{ id: "demo", label: "Demo" }];
   const hour = 3_600_000;
