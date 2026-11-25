@@ -11,6 +11,9 @@ jobs:
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.0'
+      # LuaJIT's Makefile guesses the target from the host (Darwin = macOS) and then builds
+      # buildvm with the JIT on but the iOS target with it off; say it is iOS.
+      TARGET_SYS: iOS
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
