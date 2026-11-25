@@ -9,6 +9,9 @@ on:
 jobs:
   check:
     runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+      IPHONEOS_DEPLOYMENT_TARGET: '17.0'
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
