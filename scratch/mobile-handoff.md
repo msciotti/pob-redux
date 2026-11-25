@@ -75,10 +75,9 @@ Checks: `bunx svelte-check --tsconfig ./tsconfig.json` must report 0 errors and 
    CLIs cannot run there. Port the PoB fork's agent tools (`agent/api/tools.mjs` in `msciotti/PathOfBuilding`:
    search across mod sources, find_by_effect, what_if, rank_options, compare_variants, design_rare,
    fill_resists, trade pricing) into Redux's tool list. Consider per-change cards with Preview.
-3. **iOS build (on a Mac):** `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`; build `pobctl` for the
-   simulator and run it with `xcrun simctl spawn booted …`; then `bun tauri ios init`, cfg-gate the desktop-only
-   crates (whisper-rs, cpal, agent launchers, the MCP/axum server, deep links, maybe keyring), bundle only the
-   PoE1 resources with the current tree, run on a device.
+3. **iOS build (on a Mac):** branch `ios-build`. Follow `IOS-BUILD.md`. CI got Rust + LuaJIT
+   building for `aarch64-apple-ios`; the last unverified fix is linking Accelerate for whisper.cpp. Next: run on
+   the simulator, then on a device; check engine boot/recalc and memory (pool of 2 × ~480 MB).
 4. Translation: new strings in `src/lib/mobile/` are English only; Redux translates into 11 languages.
 
 ## Open questions

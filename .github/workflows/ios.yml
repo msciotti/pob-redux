@@ -1,9 +1,7 @@
 name: ios
 
-# Does the app compile for iOS? Runs on a macOS runner; manual only.
+# Does the app compile for iOS? Runs on a macOS runner; manual only (too slow to run on every push).
 on:
-  push:
-    branches: [ios-build]
   workflow_dispatch:
 
 jobs:

@@ -73,6 +73,10 @@
       "signingIdentity": "-",
       "hardenedRuntime": false,
       "entitlements": "entitlements.plist"
+    },
+    "iOS": {
+      "minimumSystemVersion": "15.0",
+      "frameworks": ["Accelerate"]
     }
   }
 }
