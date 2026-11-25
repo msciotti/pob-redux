@@ -11,7 +11,6 @@ jobs:
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.0'
-      IPHONEOS_DEPLOYMENT_TARGET: '17.0'
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -23,7 +22,7 @@ jobs:
       - name: Stub resources dirs so tauri-build passes
         run: mkdir -p src-tauri/resources/pob src-tauri/resources/pob1 src-tauri/resources/pob1-data build
       - name: cargo check (iOS simulator)
-        run: cargo check -p pob-redux --lib --target aarch64-apple-ios-sim 2>&1 | tee ios-check.log
+        run: set -o pipefail; cargo check -p pob-redux --lib --target aarch64-apple-ios-sim 2>&1 | tee ios-check.log
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: ios-check-log, path: ios-check.log }
