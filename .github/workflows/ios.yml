@@ -14,6 +14,7 @@ jobs:
       # LuaJIT's Makefile guesses the target from the host (Darwin = macOS) and then builds
       # buildvm with the JIT on but the iOS target with it off; say it is iOS.
       TARGET_SYS: iOS
+      POB_REDUX_ALLOW_STALE_DIST: '1'
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -23,7 +24,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: bun install
       - name: Stub resources dirs so tauri-build passes
-        run: mkdir -p src-tauri/resources/pob src-tauri/resources/pob1 src-tauri/resources/pob1-data build
+        run: mkdir -p src-tauri/resources/pob src-tauri/resources/pob1 src-tauri/resources/pob1-data dist && touch dist/index.html
       - name: cargo check (iOS simulator)
         run: set -o pipefail; cargo check -p pob-redux --lib --target aarch64-apple-ios-sim 2>&1 | tee ios-check.log
       - uses: actions/upload-artifact@v4
