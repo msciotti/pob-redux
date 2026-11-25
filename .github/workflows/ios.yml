@@ -30,3 +30,48 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: ios-check-log, path: ios-check.log }
+
+  ipa:
+    runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+      TARGET_SYS: iOS
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read pinned PoB commit
+        id: pin
+        run: |
+          c=$(awk -v s="[poe1]" '$0 == s {f=1; next} /^\[/ {f=0} f && /^commit/' pob-sync.toml | cut -d'"' -f2)
+          echo "commit1=$c" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: PathOfBuildingCommunity/PathOfBuilding
+          ref: ${{ steps.pin.outputs.commit1 }}
+          path: upstream/PathOfBuilding
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: oven-sh/setup-bun@v2
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: ios-ipa, cache-on-failure: true }
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Vendor PoE1 Path of Building
+        run: |
+          cargo run -p pob-sync -- --game poe1 --source upstream/PathOfBuilding
+          mkdir -p src-tauri/resources/pob
+      - name: tauri ios init
+        run: bun tauri ios init --ci 2>&1 | tee init.log
+      - name: Build unsigned app
+        run: |
+          set -o pipefail
+          bun tauri ios build --ci --target aarch64 --debug 2>&1 | tee build.log || true
+          find src-tauri/gen/apple -name '*.app' -o -name '*.ipa' | head
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ipa-logs
+          path: |
+            init.log
+            build.log
+            src-tauri/gen/apple/build/**/*.ipa
