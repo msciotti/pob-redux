@@ -2,6 +2,8 @@ name: ios
 
 # Does the app compile for iOS? Runs on a macOS runner; manual only.
 on:
+  push:
+    branches: [ios-build]
   workflow_dispatch:
 
 jobs:
