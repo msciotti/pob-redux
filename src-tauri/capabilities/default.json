@@ -2,7 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window, the popped-out assistant, the popped-out item and torn-off tabs",
-  "windows": ["main", "assistant", "item", "tab-*"],
+  "windows": [
+    "main",
+    "assistant",
+    "item",
+    "tab-*"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
@@ -20,5 +25,10 @@
     "clipboard-manager:allow-read-text",
     "updater:default",
     "process:allow-restart"
+  ],
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
   ]
 }
